@@ -22,36 +22,6 @@ class Board
     unmarked_keys.empty?
   end
 
-  def someone_won?
-    !!winning_marker
-  end
-
-  def immediate_threat?
-    WINNING_LINES.each do |line|
-      squares = @squares.values_at(*line)
-      if two_identical_human_markers?(squares)
-        return true
-      end 
-    end
-    false 
-  end 
-
-  def find_vulnerable_square
-    #check each line in WINNING_LINES to see which one has two human markers 
-    #find the line with two human markers 
-    #find the empty square number in the line and return 
-  end
-
-  def winning_marker
-    WINNING_LINES.each do |line|
-      squares = @squares.values_at(*line)
-      if three_identical_markers?(squares)
-        return squares.first.marker
-      end
-    end
-    nil
-  end
-
   def reset
     (1..9).each { |key| @squares[key] = Square.new }
   end
@@ -72,7 +42,73 @@ class Board
   end
   # rubocop:enable Metrics/AbcSize
 
+  def someone_won?
+    !!winning_marker
+  end
+
+  def winning_marker
+    WINNING_LINES.each do |line|
+      squares = @squares.values_at(*line)
+      if three_identical_markers?(squares)
+        return squares.first.marker
+      end
+    end
+    nil
+  end
+
+  def computer_winning_move
+    WINNING_LINES.each do |line|
+      squares = @squares.values_at(*line)
+      if two_identical_computer_markers?(squares)
+        squares.each do |square|
+          if square.marker == Square::INITIAL_MARKER
+            square.marker = TTTGame::COMPUTER_MARKER
+          end
+        end
+      end
+    end
+  end
+
+
+  def computer_nearly_winning?
+     WINNING_LINES.each do |line|
+      squares = @squares.values_at(*line)
+      if two_identical_computer_markers?(squares)
+        return true
+      end 
+    end
+    false 
+  end     
+
+  def immediate_threat?
+    WINNING_LINES.each do |line|
+      squares = @squares.values_at(*line)
+      if two_identical_human_markers?(squares)
+        return true
+      end 
+    end
+    false 
+  end 
+
+  def defend_vulnerable_square
+    WINNING_LINES.each do |line|
+      squares = @squares.values_at(*line)
+      if two_identical_human_markers?(squares)
+        squares.each do |square|
+          if square.marker == Square::INITIAL_MARKER
+            square.marker = TTTGame::COMPUTER_MARKER
+          end
+        end
+      end
+    end
+  end
+
   private
+
+  def two_identical_computer_markers?(squares)
+    markers = squares.select(&:marked?).collect(&:marker)
+    markers.all?(TTTGame::COMPUTER_MARKER) && markers.size == 2 
+  end 
 
   def two_identical_human_markers?(squares)
     markers = squares.select(&:marked?).collect(&:marker)
@@ -109,10 +145,11 @@ class Square
 end
 
 class Player
-  attr_reader :marker
+  attr_accessor :marker, :name 
 
-  def initialize(marker)
+  def initialize(marker=nil, name = nil)
     @marker = marker
+    @name = name 
   end
 end
 
@@ -134,27 +171,67 @@ class ScoreKeeper
 end 
 
 class TTTGame
-  HUMAN_MARKER = "X"
-  COMPUTER_MARKER = "O"
-  FIRST_TO_MOVE = HUMAN_MARKER
-
   attr_reader :board, :human, :computer
+  attr_writer :current_marker
 
   def initialize
     @board = Board.new
-    @human = Player.new(HUMAN_MARKER)
-    @computer = Player.new(COMPUTER_MARKER)
-    @current_marker = FIRST_TO_MOVE
+    @human = Player.new
+    @computer = Player.new
+    @current_marker = nil
     @score = ScoreKeeper.new 
   end
 
+  def choose_marker
+    puts "Please choose a marker: X or O."
+    puts ''
+    answer = nil
+    loop do
+      answer = gets.chomp
+      break if ['X','O'].include?(answer)
+      puts "Invalid choice. Please select either X or O."
+    end
+    human.marker = answer
+    human.marker == 'X' ? computer.marker = 'O' : computer.marker = 'X'
+    TTTGame.const_set(:HUMAN_MARKER, human.marker) 
+    TTTGame.const_set(:COMPUTER_MARKER, computer.marker)
+  end 
+
+  def choose_who_goes_first
+    puts "Would you like to go first? (y/n)"
+    answer = nil
+    loop do 
+      answer = gets.chomp
+      break if ['y','n'].include?(answer)
+      puts "Invalid choice, please select y or n."
+    end
+    answer == 'y' ? @current_marker = human.marker : @current_marker = computer.marker
+  end
+
+  def set_name
+    puts "What shall I call you? Please enter your name."
+    answer = gets.chomp
+    @human.name = answer
+    @computer.name = ['Roger', 'Hal', 'Homer'].sample
+    puts ""
+    puts "Thanks for entering a name, #{human.name}. My name is #{computer.name}."
+  end
+
   def increment_score
-    board.winning_marker == HUMAN_MARKER ? @score.increment_human_score : @score.increment_computer_score
+    case board.winning_marker
+    when human.marker  
+      @score.increment_human_score  
+    when computer.marker 
+      @score.increment_computer_score
+    end 
   end
 
   def play
     clear
     display_welcome_message
+    choose_marker
+    choose_who_goes_first
+    set_name
     main_game
     display_goodbye_message
   end
@@ -183,17 +260,19 @@ class TTTGame
 
   def declare_winner
     if @score.human_score > @score.computer_score
-      puts "You won the game!"
+      puts "#{human.name} won the game!"
       puts ""
     else 
-      puts "Computer has won the game!"
+      puts "#{computer.name} has won the game!"
       puts ""
     end 
+    @score.human_score = 0
+    @score.compuer_score = 0
   end 
 
   def display_score
     puts ""
-    puts "You have #{@score.human_score} points, computer has #{@score.computer_score} points."
+    puts "#{human.name} has #{@score.human_score} points, #{computer.name} has #{@score.computer_score} points."
     puts ""
   end
 
@@ -220,11 +299,11 @@ class TTTGame
   end
 
   def human_turn?
-    @current_marker == HUMAN_MARKER
+    @current_marker == human.marker
   end
 
   def display_board
-    puts "You're a #{human.marker}. Computer is a #{computer.marker}."
+    puts "#{human.name} is an #{human.marker}. #{computer.name} is an #{computer.marker}."
     puts ""
     board.draw
     puts ""
@@ -261,8 +340,12 @@ class TTTGame
 
 
   def computer_moves
-    if board.immediate_threat?
-      vulnerable_square = board.find_vulnerable_square
+    if board.computer_nearly_winning?
+      board.computer_winning_move
+    elsif board.unmarked_keys.include?(5)
+      board[5] = computer.marker
+    elsif board.immediate_threat?
+      board.defend_vulnerable_square
     else
       board[board.unmarked_keys.sample] = computer.marker
     end 
@@ -271,10 +354,10 @@ class TTTGame
   def current_player_moves
     if human_turn?
       human_moves
-      @current_marker = COMPUTER_MARKER
+      @current_marker = computer.marker
     else
       computer_moves
-      @current_marker = HUMAN_MARKER
+      @current_marker = human.marker
     end
   end
 
@@ -309,7 +392,7 @@ class TTTGame
 
   def reset
     board.reset
-    @current_marker = FIRST_TO_MOVE
+    choose_who_goes_first
     clear
   end
 
