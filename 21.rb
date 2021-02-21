@@ -80,14 +80,25 @@ class Participant
 
   def total
     sum = 0
+    count = 0
+
     self.hand.each do |card|
       if card.value == 'Ace'
-          #do something else here
-      else
-        sum += card.to_i
+        count +=1
       end 
+    end 
+    self.hand.each do |card|
+      sum += card.to_i
     end
-    sum
+
+    if count == 1 
+      sum <= 10 ? sum += 11 : sum += 1
+    elsif count == 2
+      sum <= 9 ? sum += 12 : sum += 2
+    elsif count == 3
+      sum <= 8 ? sum += 13 : sum += 3 
+    end 
+    sum 
   end
 end
 
@@ -137,7 +148,7 @@ class Game
       end 
 
       if player.busted?
-        puts "You lose!"
+        puts "You've busted! You lose!"
         break
       end 
 
@@ -146,19 +157,30 @@ class Game
   end
 
   def dealer_turn
-    dealer.hit(@deck) unless dealer.total >= 17
-    puts ""
-    puts "Dealer stays."
-    puts ""
+    loop do 
+      if dealer.total >= 17
+        puts ""
+        puts "Dealer stays."
+      else 
+        puts ""
+        puts "Dealer hits."
+        dealer.hit(@deck)
+      end
+      break if dealer.total >= 17
+    end 
+    if dealer.busted?
+      puts "Dealer has busted!"
+    end
   end
 
   def show_result
-    puts "#{player.hand}"
-    puts "#{dealer.hand}"
-    if player.total > dealer.total
+    binding.pry
+    if !player.busted? && player.total > dealer.total
       puts "You win!"
-    else 
-      puts "Delaer wins!"
+    elsif player.total == dealer.total
+      puts "It's a tie!" 
+    elsif  !dealer.busted? && dealer.total > player.total
+      puts "Dealer wins!"
     end 
   end
 
