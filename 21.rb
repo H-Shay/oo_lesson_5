@@ -2,8 +2,8 @@ class Card
   attr_reader :suit, :value
 
   def initialize(suit, value)
-    @suit = suit 
-    @value = value 
+    @suit = suit
+    @value = value
   end
 
   def to_s
@@ -18,9 +18,9 @@ class Card
       10
     when 'Jack'
       10
-    else 
+    else
       value.to_i
-    end 
+    end
   end
 end
 
@@ -41,7 +41,7 @@ class Deck
     end
     ['King', 'Queen', 'Ace', 'Jack'].each do |value|
       deck << Card.new(suit, value)
-    end 
+    end
   end
 
   def deal
@@ -49,7 +49,6 @@ class Deck
     deck.delete(card)
   end
 end
-
 
 class Participant
   attr_accessor :hand
@@ -60,28 +59,25 @@ class Participant
 
   def hit(deck)
     card = deck.deal
-    self.hand << card
+    hand << card
     puts ""
     puts "The new card is: #{card}."
     puts ""
   end
 
-
   def busted?
-    self.total > 21
+    total > 21
   end
 
   def total
     sum = 0
     count = 0
 
-    self.hand.each do |card|
-      if card.value == 'Ace'
-        count +=1
-      end 
-    end 
+    hand.each do |card|
+      count += 1 if card.value == 'Ace'
+    end
 
-    self.hand.each do |card|
+    hand.each do |card|
       sum += card.to_i
     end
 
@@ -89,26 +85,27 @@ class Participant
   end
 
   def determine_ace_value(count, sum)
-    if count == 1 
-      sum <= 10 ? sum += 11 : sum += 1
-    elsif count == 2
-      sum <= 9 ? sum += 12 : sum += 2
-    elsif count == 3
-      sum <= 8 ? sum += 13 : sum += 3 
+    case count
+    when 1
+      sum += sum <= 10 ? 11 : 1
+    when 2
+      sum += sum <= 9 ? 12 : 2
+    when 3
+      sum += sum <= 8 ? 13 : 3
     end
-    sum 
-  end  
+    sum
+  end
 end
 
 class Player < Participant
 end
 
-class Dealer < Participant 
+class Dealer < Participant
 end
 
 class Game
   attr_accessor :deck, :player, :dealer
-  
+
   def initialize
     @deck = Deck.new
     @player = Player.new
@@ -116,10 +113,11 @@ class Game
   end
 
   def deal_initial_hand(participant1, participant2)
-    2.times do 
+    2.times do
       participant1.hand << deck.deal
       participant2.hand << deck.deal
     end
+    show_initial_cards
   end
 
   def show_initial_cards
@@ -127,96 +125,103 @@ class Game
     puts "Your cards: #{player.hand[0]} and #{player.hand[1]}."
     puts "The dealer's card: #{dealer.hand[0]}"
     puts ""
-  end 
+  end
 
   def player_turn
-    loop do 
-      puts "Would you like to hit or stay?"
-      answer = nil
-
-      loop do 
-        answer = gets.chomp
-        break if ['hit', 'stay'].include?(answer)
-        puts "Invalid input. Please enter a valid choice: hit or stay."
-      end 
-
+    loop do
+      answer = hit_or_stay
       if answer == 'hit'
         player.hit(deck)
-      end 
+      end
 
       if player.busted?
         puts "You've busted! You lose!"
         break
-      end 
+      end
 
       break if answer == 'stay'
     end
   end
 
+  def hit_or_stay
+    puts "Would you like to hit or stay?"
+    answer = nil
+
+    loop do
+      answer = gets.chomp
+      break if ['hit', 'stay'].include?(answer)
+      puts "Invalid input. Please enter a valid choice: hit or stay."
+    end
+    answer
+  end
+
   def dealer_turn
-    loop do 
+    loop do
       if dealer.total >= 17
-        puts ""
         puts "Dealer stays."
-      else 
-        puts ""
+      else
         puts "Dealer hits."
         dealer.hit(deck)
       end
       break if dealer.total >= 17
-    end 
-    if dealer.busted?
-      puts "Dealer has busted!"
     end
+    puts "Dealer has busted!" if dealer.busted?
   end
 
   def show_result
-    if !player.busted? && player.total > dealer.total
+    if player_wins?
       puts "You win!"
     elsif player.total == dealer.total
-      puts "It's a tie!" 
-    elsif  !dealer.busted? && dealer.total > player.total
+      puts "It's a tie!"
+    elsif dealer_wins?
       puts "Dealer wins!"
-    end 
+    end
+  end
+
+  def player_wins?
+    !player.busted? && player.total > dealer.total
+  end
+
+  def dealer_wins?
+    !dealer.busted? && dealer.total > player.total
   end
 
   def reset_game
     initialize
-  end 
+  end
 
   def welcome_message
     puts ""
     puts "Welcome to 21. Let's play some cards!"
     puts ""
-  end 
+  end
 
   def play_again?
     answer = ""
-    loop do 
+    loop do
       puts "Would you like to play again? (y/n)?"
       answer = gets.chomp
-      break if ['y','n'].include? answer.downcase
+      break if ['y', 'n'].include? answer.downcase
       puts "Invalid input, please choose either y or n."
-    end 
+    end
     answer == 'y'
   end
 
   def goodbye_message
     puts "Thanks for playing 21!"
-  end  
+  end
 
   def start
-    welcome_message 
-    loop do 
+    welcome_message
+    loop do
       deal_initial_hand(dealer, player)
-      show_initial_cards
       player_turn
       dealer_turn unless player.busted?
       show_result
       break unless play_again?
       reset_game
     end
-    goodbye_message 
+    goodbye_message
   end
 end
 
