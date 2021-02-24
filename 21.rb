@@ -1,5 +1,3 @@
-require 'pry'
-
 class Card
   attr_reader :suit, :value
 
@@ -48,11 +46,8 @@ class Deck
   end
 
   def deal
-    card = @deck.sample
-  end
-
-  def remove_card(card)
-    @deck.delete(card)
+    card = deck.sample
+    deck.delete(card)
   end
 end
 
@@ -67,7 +62,6 @@ class Participant
   def hit(deck)
     card = deck.deal
     self.hand << card
-    deck.remove_card(card)
     puts ""
     puts "The new card is: #{card}."
     puts ""
@@ -87,19 +81,25 @@ class Participant
         count +=1
       end 
     end 
+
     self.hand.each do |card|
       sum += card.to_i
     end
 
+    count > 0 ? determine_ace_value(count, sum) : sum
+  end
+
+  def determine_ace_value(count, sum)
     if count == 1 
       sum <= 10 ? sum += 11 : sum += 1
     elsif count == 2
       sum <= 9 ? sum += 12 : sum += 2
     elsif count == 3
       sum <= 8 ? sum += 13 : sum += 3 
-    end 
+    end
     sum 
-  end
+  end  
+
 end
 
 class Player < Participant
@@ -119,9 +119,7 @@ class Game
 
   def deal_cards(participant, num_cards)
     num_cards.times do 
-      card = @deck.deal
-      participant.hand << card
-      @deck.remove_card(card)
+      participant.hand << @deck.deal
     end
   end
 
@@ -174,7 +172,6 @@ class Game
   end
 
   def show_result
-    binding.pry
     if !player.busted? && player.total > dealer.total
       puts "You win!"
     elsif player.total == dealer.total
@@ -184,13 +181,44 @@ class Game
     end 
   end
 
+  def reset_game
+    initialize
+  end 
+
+  def welcome_message
+    puts ""
+    puts "Welcome to 21. Let's play some cards!"
+    puts ""
+  end 
+
+  def play_again?
+    answer = ""
+    loop do 
+      puts "Would you like to play again? (y/n)?"
+      answer = gets.chomp
+      break if ['y','n'].include? answer.downcase
+      puts "Invalid input, please choose either y or n."
+    end 
+    answer == 'y'
+  end
+
+  def goodbye_message
+    puts "Thanks for playing 21!"
+  end  
+
   def start
-    deal_cards(player, 2)
-    deal_cards(dealer, 2)
-    show_initial_cards
-    player_turn
-    dealer_turn unless player.busted?
-    show_result
+    welcome_message 
+    loop do 
+      deal_cards(player, 2)
+      deal_cards(dealer, 2)
+      show_initial_cards
+      player_turn
+      dealer_turn unless player.busted?
+      show_result
+      break unless play_again?
+      reset_game
+    end
+    goodbye_message 
   end
 end
 
