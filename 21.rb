@@ -39,10 +39,9 @@ class Deck
     (2..10).each do |value|
       deck << Card.new(suit, value)
     end
-    deck << Card.new(suit, 'Ace')
-    deck << Card.new(suit, 'King')
-    deck << Card.new(suit, 'Queen')
-    deck << Card.new(suit, 'Jack')
+    ['King', 'Queen', 'Ace', 'Jack'].each do |value|
+      deck << Card.new(suit, value)
+    end 
   end
 
   def deal
@@ -99,7 +98,6 @@ class Participant
     end
     sum 
   end  
-
 end
 
 class Player < Participant
@@ -117,9 +115,10 @@ class Game
     @dealer = Dealer.new
   end
 
-  def deal_cards(participant, num_cards)
-    num_cards.times do 
-      participant.hand << @deck.deal
+  def deal_initial_hand(participant1, participant2)
+    2.times do 
+      participant1.hand << deck.deal
+      participant2.hand << deck.deal
     end
   end
 
@@ -142,7 +141,7 @@ class Game
       end 
 
       if answer == 'hit'
-        player.hit(@deck)
+        player.hit(deck)
       end 
 
       if player.busted?
@@ -162,7 +161,7 @@ class Game
       else 
         puts ""
         puts "Dealer hits."
-        dealer.hit(@deck)
+        dealer.hit(deck)
       end
       break if dealer.total >= 17
     end 
@@ -209,8 +208,7 @@ class Game
   def start
     welcome_message 
     loop do 
-      deal_cards(player, 2)
-      deal_cards(dealer, 2)
+      deal_initial_hand(dealer, player)
       show_initial_cards
       player_turn
       dealer_turn unless player.busted?
